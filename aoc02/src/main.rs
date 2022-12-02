@@ -15,7 +15,7 @@ enum RPS {
 }
 
 impl RPS {
-    fn to_score(&self) -> usize {
+    fn to_score(self) -> usize {
         match self {
             Self::Rock => 1,
             Self::Paper => 2,
@@ -23,7 +23,7 @@ impl RPS {
         }
     }
 
-    fn fight(&self, other: &Self) -> usize {
+    fn fight(self, other: Self) -> usize {
         self.to_score()
             + match (self, other) {
                 // Win
@@ -55,7 +55,7 @@ fn part_1(strategy_guide: &str) -> Result<usize, Box<dyn Error>> {
                     "Z" => Ok(RPS::Scissors),
                     _ => Err("Invalid last char in strategy round"),
                 }?;
-                return Ok(mine.fight(&their));
+                return Ok(mine.fight(their));
             }
             Err("Invalid format for round")
         })
@@ -91,7 +91,7 @@ fn part_2(strategy_guide: &str) -> Result<usize, Box<dyn Error>> {
                     },
                     _ => Err("Invalid last char in strategy round"),
                 }?;
-                return Ok(mine.fight(&their));
+                return Ok(mine.fight(their));
             }
             Err("Invalid format for round")
         })
