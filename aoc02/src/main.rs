@@ -38,62 +38,66 @@ impl RPS {
     }
 }
 
-fn part_1(strategy_guide: &str) -> usize {
-    strategy_guide
+fn part_1(strategy_guide: &str) -> Result<usize, Box<dyn Error>> {
+    Ok(strategy_guide
         .lines()
         .map(|round| {
             if let [their, mine] = round.split(' ').collect::<Vec<_>>()[..] {
                 let their = match their {
-                    "A" => RPS::Rock,
-                    "B" => RPS::Paper,
-                    "C" => RPS::Scissors,
-                    _ => unreachable!(),
-                };
+                    "A" => Ok(RPS::Rock),
+                    "B" => Ok(RPS::Paper),
+                    "C" => Ok(RPS::Scissors),
+                    _ => Err("Invalid first char in strategy round"),
+                }?;
                 let mine = match mine {
-                    "X" => RPS::Rock,
-                    "Y" => RPS::Paper,
-                    "Z" => RPS::Scissors,
-                    _ => unreachable!(),
-                };
-                return mine.fight(&their);
+                    "X" => Ok(RPS::Rock),
+                    "Y" => Ok(RPS::Paper),
+                    "Z" => Ok(RPS::Scissors),
+                    _ => Err("Invalid last char in strategy round"),
+                }?;
+                return Ok(mine.fight(&their));
             }
-            unreachable!();
+            Err("Invalid format for round")
         })
-        .sum()
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .sum())
 }
 
-fn part_2(strategy_guide: &str) -> usize {
-    strategy_guide
+fn part_2(strategy_guide: &str) -> Result<usize, Box<dyn Error>> {
+    Ok(strategy_guide
         .lines()
         .map(|round| {
             if let [their, result] = round.split(' ').collect::<Vec<_>>()[..] {
                 let their = match their {
-                    "A" => RPS::Rock,
-                    "B" => RPS::Paper,
-                    "C" => RPS::Scissors,
-                    _ => unreachable!(),
-                };
+                    "A" => Ok(RPS::Rock),
+                    "B" => Ok(RPS::Paper),
+                    "C" => Ok(RPS::Scissors),
+                    _ => Err("Invalid first char in strategy round"),
+                }?;
                 let mine = match result {
                     "X" => match their {
                         // need to lose
-                        RPS::Rock => RPS::Scissors,
-                        RPS::Paper => RPS::Rock,
-                        RPS::Scissors => RPS::Paper,
+                        RPS::Rock => Ok(RPS::Scissors),
+                        RPS::Paper => Ok(RPS::Rock),
+                        RPS::Scissors => Ok(RPS::Paper),
                     },
-                    "Y" => their, // tied
+                    "Y" => Ok(their), // tied
                     "Z" => match their {
                         // need to win
-                        RPS::Rock => RPS::Paper,
-                        RPS::Paper => RPS::Scissors,
-                        RPS::Scissors => RPS::Rock,
+                        RPS::Rock => Ok(RPS::Paper),
+                        RPS::Paper => Ok(RPS::Scissors),
+                        RPS::Scissors => Ok(RPS::Rock),
                     },
-                    _ => unreachable!(),
-                };
-                return mine.fight(&their);
+                    _ => Err("Invalid last char in strategy round"),
+                }?;
+                return Ok(mine.fight(&their));
             }
-            unreachable!();
+            Err("Invalid format for round")
         })
-        .sum()
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .sum())
 }
 
 #[cfg(test)]
@@ -107,11 +111,11 @@ C Z
 
     #[test]
     fn it_works_with_example_1() {
-        assert_eq!(15, part_1(TEST_STRATEGY_GUIDE));
+        assert_eq!(15, part_1(TEST_STRATEGY_GUIDE).unwrap());
     }
 
     #[test]
     fn it_works_with_example_2() {
-        assert_eq!(12, part_2(TEST_STRATEGY_GUIDE));
+        assert_eq!(12, part_2(TEST_STRATEGY_GUIDE).unwrap());
     }
 }
