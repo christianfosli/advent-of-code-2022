@@ -15,9 +15,9 @@ trait Prioritizable {
 impl Prioritizable for char {
     fn priority(&self) -> u8 {
         if self.is_lowercase() {
-            (*self as u8) - ('a' as u8) + 1u8 // a-z -> 1-26
+            (*self as u8) - b'a' + 1u8 // a-z -> 1-26
         } else if self.is_uppercase() {
-            (*self as u8) - ('A' as u8) + 27u8 // A-Z -> 27-52
+            (*self as u8) - b'A' + 27u8 // A-Z -> 27-52
         } else {
             unreachable!();
         }
@@ -42,7 +42,7 @@ fn part_1_sum_pri_common_cpt(rucksacks: &str) -> usize {
 fn part_2_sum_pri_badges(rucksacks: &str) -> usize {
     rucksacks
         .lines()
-        .array_chunks::<3>()
+        .array_chunks()
         .map(|[first, second, third]| {
             first
                 .chars()
