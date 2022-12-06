@@ -4,10 +4,22 @@ fn main() -> Result<(), Box<dyn Error>> {
     let input = fs::read_to_string("input.txt")?;
     let (drawing, rearrangement) = input.split_once("\n\n").unwrap();
     let stacks = parse_stacks::<9>(drawing);
-    let stacks = rearrange(&stacks, rearrangement);
+    let stacks1 = rearrange_1(&stacks, rearrangement);
     println!(
         "part 1: {:?}",
-        stacks.iter().map(|x| x.last().unwrap()).collect::<Vec<_>>()
+        stacks1
+            .iter()
+            .map(|x| x.last().unwrap())
+            .collect::<Vec<_>>()
+    );
+
+    let stacks2 = rearrange_2(&stacks, rearrangement);
+    println!(
+        "part 2: {:?}",
+        stacks2
+            .iter()
+            .map(|x| x.last().unwrap())
+            .collect::<Vec<_>>()
     );
 
     Ok(())
@@ -38,14 +50,14 @@ fn parse_stacks<const N: usize>(drawing: &str) -> [Vec<char>; N] {
                 None
             }
         }) {
-            stacks[i].push(crt);
+            stacks[i].insert(0, crt);
         }
     }
 
     stacks
 }
 
-fn rearrange(stacks: &[Vec<char>], rearrangements: &str) -> Vec<Vec<char>> {
+fn rearrange_1(stacks: &[Vec<char>], rearrangements: &str) -> Vec<Vec<char>> {
     let mut stacks = stacks.to_vec();
     for cmd in rearrangements.lines() {
         if let [count, from, to] = cmd
@@ -59,6 +71,33 @@ fn rearrange(stacks: &[Vec<char>], rearrangements: &str) -> Vec<Vec<char>> {
                 } else {
                     unreachable!();
                 }
+            }
+        } else {
+            unreachable!();
+        }
+    }
+    stacks
+}
+
+fn rearrange_2(stacks: &[Vec<char>], rearrangements: &str) -> Vec<Vec<char>> {
+    let mut stacks = stacks.to_vec();
+    for cmd in rearrangements.lines() {
+        if let [count, from, to] = cmd
+            .split_whitespace()
+            .filter_map(|str| str.parse::<usize>().ok())
+            .collect::<Vec<_>>()[..]
+        {
+            let mut moving = vec![];
+            for _ in 0..count {
+                if let Some(crt) = stacks[from - 1].pop() {
+                    moving.push(crt);
+                    // stacks[to - 1].push(crt);
+                } else {
+                    unreachable!();
+                }
+            }
+            for crt in moving.into_iter().rev() {
+                stacks[to - 1].push(crt);
             }
         } else {
             unreachable!();
@@ -85,6 +124,25 @@ move 1 from 1 to 2";
     fn it_works_with_example_1() {
         let (drawing, rearrangement) = TEST_REARRANGEMENT_DRAWING.split_once("\n\n").unwrap();
         let stacks = parse_stacks::<3>(drawing);
-        println!("{:?}", rearrange(&stacks, rearrangement));
+        println!(
+            "{:?}",
+            rearrange_1(&stacks, rearrangement)
+                .iter()
+                .map(|crt| format!("{:?}", crt.last()))
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn it_works_with_example_2() {
+        let (drawing, rearrangement) = TEST_REARRANGEMENT_DRAWING.split_once("\n\n").unwrap();
+        let stacks = parse_stacks::<3>(drawing);
+        println!(
+            "{:?}",
+            rearrange_2(&stacks, rearrangement)
+                .iter()
+                .map(|crt| format!("{:?}", crt.last()))
+                .collect::<Vec<_>>()
+        );
     }
 }
