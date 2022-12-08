@@ -6,6 +6,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let input = fs::read_to_string("input.txt")?;
     let tree = parse_term(&input);
     println!("Part 1: {:?}", part_1_sum_dirs_size_lt_100_000(&tree));
+    println!("Part 2: {:?}", part_2_find_dir_to_delete(&tree));
     Ok(())
 }
 
@@ -25,6 +26,27 @@ fn part_1_sum_dirs_size_lt_100_000(tree: &Tree<FileNode>) -> usize {
             FileNode::File(_, _) => None,
         })
         .sum()
+}
+
+fn part_2_find_dir_to_delete(tree: &Tree<FileNode>) -> Option<(FileNode, usize)> {
+    let available_space = 70_000_000 - size(&tree.root().unwrap());
+    let update_needs = 30_000_000;
+    let we_need = update_needs - available_space;
+    tree.root()
+        .unwrap()
+        .traverse_level_order()
+        .filter_map(|x| match x.data() {
+            FileNode::Dir(_) => {
+                let size = size(&x);
+                if size > we_need {
+                    Some((x.data().clone(), size))
+                } else {
+                    None
+                }
+            }
+            FileNode::File(_, _) => None,
+        })
+        .min_by_key(|&(_, size)| size)
 }
 
 fn size(node: &NodeRef<FileNode>) -> usize {
@@ -116,5 +138,13 @@ $ ls
             95437,
             part_1_sum_dirs_size_lt_100_000(&parse_term(TEST_TERMINAL_OUTPUT))
         );
+    }
+
+    #[test]
+    fn it_passes_example_2() {
+        assert_eq!(
+            Some(24933642),
+            part_2_find_dir_to_delete(&parse_term(TEST_TERMINAL_OUTPUT))
+        )
     }
 }
