@@ -143,7 +143,7 @@ $ ls
     #[test]
     fn it_passes_example_2() {
         assert_eq!(
-            Some(24933642),
+            Some((FileNode::Dir("d".to_string()), 24933642)),
             part_2_find_dir_to_delete(&parse_term(TEST_TERMINAL_OUTPUT))
         )
     }
