@@ -9,14 +9,25 @@ fn main() -> Result<(), Box<dyn Error>> {
 fn part_1_sum_signal_strengths(program: &str) -> isize {
     let mut registry = HashMap::from([('x', 1isize)]);
 
-    let cycles = program
+    program
+        .lines()
+        .flat_map(|instr| do_instruction(&mut registry, instr)) // cycles
+        .enumerate()
+        .map(|(i, x)| (i as isize + 1) * x) //signal strength
+        .skip(19)
+        .step_by(40)
+        .sum()
+}
+
+// WIP - TODO
+fn part_2_draw_crt(program: &str) {
+    let mut registry = HashMap::from([('x', 1isize)]);
+
+    for (i, x) in program
         .lines()
         .flat_map(|instr| do_instruction(&mut registry, instr))
         .enumerate()
-        .map(|(i, x)| (i as isize + 1) * x) //signal strength
-        .collect::<Vec<_>>();
-
-    cycles.iter().skip(19).step_by(40).sum()
+    {}
 }
 
 // Returns list of x reg value per CPU cycle used to perform the instruction
