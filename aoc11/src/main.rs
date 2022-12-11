@@ -27,6 +27,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let input = fs::read_to_string("input.txt")?;
     let monkeys = parse_monkeys(&input)?;
     println!("Part 1: {}", part_1_level_of_monkey_business(&monkeys));
+    println!("Part 2: {}", part_2_level_of_monkey_business(&monkeys));
     Ok(())
 }
 
@@ -38,7 +39,6 @@ fn parse_monkeys(s: &str) -> Result<Vec<Monkey>, Box<dyn Error>> {
 
     Ok(s.split("\n\n")
         .map(|x| {
-            dbg!(&x);
             let mut monkey_data = x
                 .lines()
                 .skip(1)
@@ -149,6 +149,31 @@ fn part_1_level_of_monkey_business(monkeys: &[Monkey]) -> usize {
     most_active.1 * second_most_active.1
 }
 
+fn part_2_level_of_monkey_business(monkeys: &[Monkey]) -> usize {
+    // TODO: Overflows during multiplication
+    let mut monkeys = monkeys.to_vec();
+    let mut inspections = HashMap::new();
+    for _round in 0..10_000 {
+        for i in 0..monkeys.len() {
+            for _ in 0..monkeys[i].items.len() {
+                let current_monkey = &mut monkeys[i];
+                let item = current_monkey.items.pop().unwrap();
+                let item = current_monkey.op.clone()(item);
+                let next_monkey = current_monkey.test.clone()(item);
+                monkeys[next_monkey].items.push(item);
+
+                *inspections.entry(i).or_insert(0) += 1;
+            }
+        }
+    }
+    let most_active = inspections.iter().max_by_key(|&(_key, val)| val).unwrap();
+    let second_most_active = inspections
+        .iter()
+        .filter(|&(key, _val)| key != most_active.0)
+        .max_by_key(|&(_key, val)| val)
+        .unwrap();
+    most_active.1 * second_most_active.1
+}
 #[cfg(test)]
 mod tests {
     use super::*;
