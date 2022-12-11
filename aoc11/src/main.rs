@@ -1,17 +1,20 @@
 use std::{
+    collections::HashMap,
     error::Error,
     fmt::{self, Debug, Formatter},
     fs,
+    sync::Arc,
 };
 
 use regex::Regex;
 
 type WorryLevel = usize;
 
+#[derive(Clone)]
 struct Monkey {
     items: Vec<WorryLevel>,
-    op: Box<dyn Fn(WorryLevel) -> WorryLevel>,
-    test: Box<dyn Fn(WorryLevel) -> usize>, // returns index of "throw to monkey"
+    op: Arc<dyn Fn(WorryLevel) -> WorryLevel>,
+    test: Arc<dyn Fn(WorryLevel) -> usize>, // returns index of "throw to monkey"
 }
 
 impl Debug for Monkey {
@@ -22,8 +25,8 @@ impl Debug for Monkey {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let input = fs::read_to_string("input.txt")?;
-    let mut monkeys = parse_monkeys(&input)?;
-    println!("Part 1: {}", part_1_level_of_monkey_business(&mut monkeys));
+    let monkeys = parse_monkeys(&input)?;
+    println!("Part 1: {}", part_1_level_of_monkey_business(&monkeys));
     Ok(())
 }
 
@@ -52,18 +55,18 @@ fn parse_monkeys(s: &str) -> Result<Vec<Monkey>, Box<dyn Error>> {
                     if op_mul_re.is_match(op) {
                         let arg = op_mul_re.captures(op).unwrap().get(1).unwrap().as_str();
                         if arg == "old" {
-                            Box::new(move |x| x * x) as Box<dyn Fn(WorryLevel) -> WorryLevel>
+                            Arc::new(move |x| x * x) as Arc<dyn Fn(WorryLevel) -> WorryLevel>
                         } else {
                             let arg = arg.parse::<usize>().unwrap();
-                            Box::new(move |x| x * arg)
+                            Arc::new(move |x| x * arg)
                         }
                     } else if op_add_re.is_match(op) {
                         let arg = op_add_re.captures(op).unwrap().get(1).unwrap().as_str();
                         if arg == "old" {
-                            Box::new(move |x| x + x) as Box<dyn Fn(WorryLevel) -> WorryLevel>
+                            Arc::new(move |x| x + x) as Arc<dyn Fn(WorryLevel) -> WorryLevel>
                         } else {
                             let arg = arg.parse::<usize>().unwrap();
-                            Box::new(move |x| x + arg)
+                            Arc::new(move |x| x + arg)
                         }
                     } else {
                         unreachable!();
@@ -109,7 +112,7 @@ fn parse_monkeys(s: &str) -> Result<Vec<Monkey>, Box<dyn Error>> {
                         .unwrap()
                 })
                 .unwrap();
-            let test = Box::new(move |x: WorryLevel| {
+            let test = Arc::new(move |x: WorryLevel| {
                 if x % divisible_by == 0 {
                     if_true
                 } else {
@@ -121,15 +124,29 @@ fn parse_monkeys(s: &str) -> Result<Vec<Monkey>, Box<dyn Error>> {
         .collect())
 }
 
-fn part_1_level_of_monkey_business(monkeys: &mut Vec<Monkey>) -> usize {
+fn part_1_level_of_monkey_business(monkeys: &[Monkey]) -> usize {
+    let mut monkeys = monkeys.to_vec();
+    let mut inspections = HashMap::new();
     for _round in 0..20 {
-        for monkey in monkeys {
-            for _ in monkey.items {
-                monkey.items.pop();
+        for i in 0..monkeys.len() {
+            for _ in 0..monkeys[i].items.len() {
+                let current_monkey = &mut monkeys[i];
+                let item = current_monkey.items.pop().unwrap();
+                let item = current_monkey.op.clone()(item) / 3;
+                let next_monkey = current_monkey.test.clone()(item);
+                monkeys[next_monkey].items.push(item);
+
+                *inspections.entry(i).or_insert(0) += 1;
             }
         }
     }
-    0
+    let most_active = inspections.iter().max_by_key(|&(_key, val)| val).unwrap();
+    let second_most_active = inspections
+        .iter()
+        .filter(|&(key, _val)| key != most_active.0)
+        .max_by_key(|&(_key, val)| val)
+        .unwrap();
+    most_active.1 * second_most_active.1
 }
 
 #[cfg(test)]
