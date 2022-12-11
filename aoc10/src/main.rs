@@ -3,6 +3,8 @@ use std::{collections::HashMap, error::Error, fs};
 fn main() -> Result<(), Box<dyn Error>> {
     let input = fs::read_to_string("input.txt")?;
     println!("Part 1: {}", part_1_sum_signal_strengths(&input));
+    println!("Part 2:");
+    part_2_draw_crt(&input);
     Ok(())
 }
 
@@ -19,7 +21,6 @@ fn part_1_sum_signal_strengths(program: &str) -> isize {
         .sum()
 }
 
-// WIP - TODO
 fn part_2_draw_crt(program: &str) {
     let mut registry = HashMap::from([('x', 1isize)]);
 
@@ -27,7 +28,21 @@ fn part_2_draw_crt(program: &str) {
         .lines()
         .flat_map(|instr| do_instruction(&mut registry, instr))
         .enumerate()
-    {}
+    {
+        let sprite = x - 1..=x + 1;
+        let crt_pos = i % 40;
+        if crt_pos == 0 {
+            println!("");
+        }
+
+        if sprite.contains(&(crt_pos as isize)) {
+            print!("#");
+        } else {
+            print!("-");
+        }
+    }
+
+    println!("");
 }
 
 // Returns list of x reg value per CPU cycle used to perform the instruction
@@ -69,9 +84,7 @@ mod tests {
         assert_eq!(-1, *registry.get(&'x').unwrap())
     }
 
-    #[test]
-    fn it_works_with_example_1() {
-        const PROGRAM: &'static str = "addx 15
+    const PROGRAM: &'static str = "addx 15
 addx -11
 addx 6
 addx -3
@@ -218,6 +231,13 @@ noop
 noop
 noop";
 
+    #[test]
+    fn it_works_with_example_1() {
         assert_eq!(13140, part_1_sum_signal_strengths(PROGRAM));
+    }
+
+    #[test]
+    fn it_works_with_example_2() {
+        part_2_draw_crt(PROGRAM);
     }
 }
