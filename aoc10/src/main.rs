@@ -3,7 +3,7 @@ use std::{collections::HashMap, error::Error, fs};
 fn main() -> Result<(), Box<dyn Error>> {
     let input = fs::read_to_string("input.txt")?;
     println!("Part 1: {}", part_1_sum_signal_strengths(&input));
-    println!("Part 2:");
+    print!("Part 2:");
     part_2_draw_crt(&input);
     Ok(())
 }
@@ -13,9 +13,9 @@ fn part_1_sum_signal_strengths(program: &str) -> isize {
 
     program
         .lines()
-        .flat_map(|instr| do_instruction(&mut registry, instr)) // cycles
-        .enumerate()
-        .map(|(i, x)| (i as isize + 1) * x) //signal strength
+        .flat_map(|instr| do_instruction(&mut registry, instr)) // x per CPU cycle
+        .enumerate() // with index
+        .map(|(i, x)| (isize::try_from(i).unwrap() + 1) * x) // to signal strength
         .skip(19)
         .step_by(40)
         .sum()
@@ -32,17 +32,17 @@ fn part_2_draw_crt(program: &str) {
         let sprite = x - 1..=x + 1;
         let crt_pos = i % 40;
         if crt_pos == 0 {
-            println!("");
+            println!();
         }
 
-        if sprite.contains(&(crt_pos as isize)) {
+        if sprite.contains(&(isize::try_from(crt_pos).unwrap())) {
             print!("#");
         } else {
             print!("-");
         }
     }
 
-    println!("");
+    println!();
 }
 
 // Returns list of x reg value per CPU cycle used to perform the instruction
@@ -238,6 +238,7 @@ noop";
 
     #[test]
     fn it_works_with_example_2() {
+        // Run with `-- --nocapture` and look at output
         part_2_draw_crt(PROGRAM);
     }
 }
