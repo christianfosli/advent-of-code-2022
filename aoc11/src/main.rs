@@ -8,7 +8,7 @@ use std::{
 
 use regex::Regex;
 
-type WorryLevel = usize;
+type WorryLevel = u128;
 
 #[derive(Clone)]
 struct Monkey {
@@ -57,7 +57,7 @@ fn parse_monkeys(s: &str) -> Result<Vec<Monkey>, Box<dyn Error>> {
                         if arg == "old" {
                             Arc::new(move |x| x * x) as Arc<dyn Fn(WorryLevel) -> WorryLevel>
                         } else {
-                            let arg = arg.parse::<usize>().unwrap();
+                            let arg = arg.parse::<WorryLevel>().unwrap();
                             Arc::new(move |x| x * arg)
                         }
                     } else if op_add_re.is_match(op) {
@@ -65,7 +65,7 @@ fn parse_monkeys(s: &str) -> Result<Vec<Monkey>, Box<dyn Error>> {
                         if arg == "old" {
                             Arc::new(move |x| x + x) as Arc<dyn Fn(WorryLevel) -> WorryLevel>
                         } else {
-                            let arg = arg.parse::<usize>().unwrap();
+                            let arg = arg.parse::<WorryLevel>().unwrap();
                             Arc::new(move |x| x + arg)
                         }
                     } else {
@@ -82,7 +82,7 @@ fn parse_monkeys(s: &str) -> Result<Vec<Monkey>, Box<dyn Error>> {
                         .get(1)
                         .unwrap()
                         .as_str()
-                        .parse::<usize>()
+                        .parse::<WorryLevel>()
                         .unwrap()
                 })
                 .unwrap();
