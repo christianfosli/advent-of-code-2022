@@ -1,10 +1,12 @@
-use std::{num::ParseIntError, str::FromStr};
+use std::{cmp::Ordering, error::Error, fs, num::ParseIntError, str::FromStr};
 
-fn main() {
-    println!("Hello, world!");
+fn main() -> Result<(), Box<dyn Error>> {
+    let input = fs::read_to_string("input.txt")?;
+    println!("Part 1: {}", part_1_sum_correct_indices(&input));
+    Ok(())
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd)]
 enum PacketData {
     List(Vec<PacketData>),
     Int(usize),
@@ -14,25 +16,50 @@ impl FromStr for PacketData {
     type Err = ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.len() == 1 && s.chars().next().unwrap().is_digit(10) {
+        if s.parse::<usize>().is_ok() {
             Ok(PacketData::Int(s.parse::<usize>()?))
         } else if s.starts_with('[') && s.ends_with(']') {
             let content = s.strip_prefix('[').unwrap().strip_suffix(']').unwrap();
             Ok(match content {
                 "" => PacketData::List(Vec::new()),
                 _ => {
-                    // Aaargh, we can't just split by comma and recursively process
-                    // items because the nested lists also contain commas.
-                    // TODO (WIP): Split by only commas which are not inside brackets,
-                    // process each of those items and combine the results.
+                    // We can't just .split(',').map(|item| item.parse()) because nested lists also contain commas.
+                    // This tries to split by comma but "rejoin" nested lists and process recursively.
                     let mut parsed = Vec::new();
                     let mut inside_bracket = 0;
                     let mut nested_list = "".to_string();
                     for item in content.split(',') {
-                        if inside_bracket == 0 && item.len() == 1 {
+                        let is_inside_bracket = inside_bracket > 0;
+
+                        if !is_inside_bracket && item.parse::<usize>().is_ok() {
                             parsed.push(item.parse::<PacketData>()?);
-                        } else if inside_bracket > 0 && item.len() == 1 {
+                            continue;
+                        }
+
+                        if !is_inside_bracket {
+                            let open_bracket_count = item.chars().filter(|&c| c == '[').count();
+                            let close_bracket_count = item.chars().filter(|&c| c == ']').count();
+
+                            if open_bracket_count == close_bracket_count {
+                                parsed.push(item.parse::<PacketData>()?);
+                            } else {
+                                inside_bracket +=
+                                    open_bracket_count as isize - close_bracket_count as isize;
+                                nested_list += &format!("{}", item);
+                            }
+                        }
+
+                        if is_inside_bracket {
                             nested_list += &format!(",{}", item);
+                            let open_bracket_count = item.chars().filter(|&c| c == '[').count();
+                            let close_bracket_count = item.chars().filter(|&c| c == ']').count();
+                            inside_bracket +=
+                                open_bracket_count as isize - close_bracket_count as isize;
+
+                            if inside_bracket == 0 {
+                                parsed.push(nested_list.parse::<PacketData>()?);
+                                nested_list = "".to_string();
+                            }
                         }
                     }
                     PacketData::List(parsed)
@@ -45,14 +72,48 @@ impl FromStr for PacketData {
     }
 }
 
-fn part_1_sum_correct_indices(packets: &str) -> usize {
-    let packets = packets.split("\n\n").map(|x| {
-        if let [left, right] = x.lines().collect::<Vec<_>>()[..] {
-        } else {
-            unreachable!()
+impl Ord for PacketData {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match (self, other) {
+            (Self::Int(left), Self::Int(right)) => left.cmp(right),
+            (Self::List(left), Self::List(right)) => {
+                for i in 0..left.len() {
+                    if i == right.len() {
+                        return Ordering::Greater;
+                    }
+                    if left[i] < right[i] {
+                        return Ordering::Less;
+                    }
+                    if left[i] > right[i] {
+                        return Ordering::Greater;
+                    }
+                }
+                Ordering::Greater
+            }
+            (Self::Int(_), Self::List(_)) => Self::List(vec![self.clone()]).cmp(other),
+            (Self::List(_), Self::Int(_)) => self.cmp(&Self::List(vec![other.clone()])),
         }
-    });
-    0
+    }
+}
+
+fn part_1_sum_correct_indices(packets: &str) -> usize {
+    packets
+        .split("\n\n")
+        .map(|x| {
+            if let [left, right] = &x
+                .lines()
+                .map(|packet| packet.parse::<PacketData>().unwrap())
+                .collect::<Vec<_>>()[..]
+            {
+                return (left.clone(), right.clone());
+            } else {
+                unreachable!()
+            }
+        })
+        .enumerate()
+        .filter(|(_, (left, right))| left < right)
+        .map(|(i, _)| i + 1)
+        .sum()
 }
 
 #[cfg(test)]
@@ -96,8 +157,15 @@ mod tests {
         println!("{:?}", parsed);
     }
 
-    // #[test]
-    // fn it_works_with_example_1() {
-    //     assert_eq!(13, part_1_sum_correct_indices(TEST_PACKETS));
-    // }
+    #[test]
+    fn it_compares_correctly() {
+        // example_1 test works but answer is wrong. I expect logic error in cmp.
+        // add tests to find the issue
+        todo!()
+    }
+
+    #[test]
+    fn it_works_with_example_1() {
+        assert_eq!(13, part_1_sum_correct_indices(TEST_PACKETS));
+    }
 }
