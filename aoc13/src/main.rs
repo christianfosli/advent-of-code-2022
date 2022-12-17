@@ -1,12 +1,15 @@
 use std::{cmp::Ordering, error::Error, fs, num::ParseIntError, str::FromStr};
 
+use once_cell::sync::Lazy;
+
 fn main() -> Result<(), Box<dyn Error>> {
     let input = fs::read_to_string("input.txt")?;
     println!("Part 1: {}", part_1_sum_correct_indices(&input));
+    println!("Part 2: {}", part_2_find_decoder_key(&input));
     Ok(())
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 enum PacketData {
     List(Vec<PacketData>),
     Int(usize),
@@ -25,6 +28,8 @@ impl FromStr for PacketData {
                 _ => {
                     // We can't just .split(',').map(|item| item.parse()) because nested lists also contain commas.
                     // This tries to split by comma but "rejoin" nested lists and process recursively.
+
+                    // After thought: D'uh we should have just used serde to parse as json :-D
                     let mut parsed = Vec::new();
                     let mut inside_bracket = 0;
                     let mut nested_list = "".to_string();
@@ -45,7 +50,7 @@ impl FromStr for PacketData {
                             } else {
                                 inside_bracket +=
                                     open_bracket_count as isize - close_bracket_count as isize;
-                                nested_list += &format!("{}", item);
+                                nested_list += item;
                             }
                         }
 
@@ -72,27 +77,26 @@ impl FromStr for PacketData {
     }
 }
 
+impl PartialOrd for PacketData {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            (Self::Int(left), Self::Int(right)) => left.partial_cmp(right),
+            (Self::List(left), Self::List(right)) => Some(
+                left.iter()
+                    .zip(right.iter())
+                    .map(|(l, r)| l.cmp(r))
+                    .find(|&ord| ord != Ordering::Equal)
+                    .unwrap_or_else(|| left.len().cmp(&right.len())),
+            ),
+            (Self::Int(_), Self::List(_)) => Self::List(vec![self.clone()]).partial_cmp(other),
+            (Self::List(_), Self::Int(_)) => self.partial_cmp(&Self::List(vec![other.clone()])),
+        }
+    }
+}
+
 impl Ord for PacketData {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        match (self, other) {
-            (Self::Int(left), Self::Int(right)) => left.cmp(right),
-            (Self::List(left), Self::List(right)) => {
-                for i in 0..left.len() {
-                    if i == right.len() {
-                        return Ordering::Greater;
-                    }
-                    if left[i] < right[i] {
-                        return Ordering::Less;
-                    }
-                    if left[i] > right[i] {
-                        return Ordering::Greater;
-                    }
-                }
-                Ordering::Greater
-            }
-            (Self::Int(_), Self::List(_)) => Self::List(vec![self.clone()]).cmp(other),
-            (Self::List(_), Self::Int(_)) => self.cmp(&Self::List(vec![other.clone()])),
-        }
+        self.partial_cmp(other).unwrap()
     }
 }
 
@@ -105,7 +109,7 @@ fn part_1_sum_correct_indices(packets: &str) -> usize {
                 .map(|packet| packet.parse::<PacketData>().unwrap())
                 .collect::<Vec<_>>()[..]
             {
-                return (left.clone(), right.clone());
+                (left.clone(), right.clone())
             } else {
                 unreachable!()
             }
@@ -114,6 +118,35 @@ fn part_1_sum_correct_indices(packets: &str) -> usize {
         .filter(|(_, (left, right))| left < right)
         .map(|(i, _)| i + 1)
         .sum()
+}
+
+fn part_2_find_decoder_key(packets: &str) -> usize {
+    static DIVIDER_PACKETS: Lazy<[PacketData; 2]> = Lazy::new(|| {
+        [
+            "[[2]]".parse::<PacketData>().unwrap(),
+            "[[6]]".parse::<PacketData>().unwrap(),
+        ]
+    });
+
+    let mut packets = packets
+        .lines()
+        .filter_map(|l| {
+            if l.is_empty() {
+                None
+            } else {
+                l.parse::<PacketData>().ok()
+            }
+        })
+        .chain(DIVIDER_PACKETS.iter().cloned())
+        .collect::<Vec<_>>();
+    packets.sort();
+
+    packets
+        .into_iter()
+        .enumerate()
+        .filter(|(_i, x)| DIVIDER_PACKETS.contains(x))
+        .map(|(i, _x)| i + 1)
+        .product()
 }
 
 #[cfg(test)]
@@ -159,13 +192,45 @@ mod tests {
 
     #[test]
     fn it_compares_correctly() {
-        // example_1 test works but answer is wrong. I expect logic error in cmp.
-        // add tests to find the issue
-        todo!()
+        assert_eq!(
+            Ordering::Greater,
+            "[1,2,3]"
+                .parse::<PacketData>()
+                .unwrap()
+                .cmp(&"[1,2,2]".parse::<PacketData>().unwrap())
+        );
+
+        assert_eq!(
+            Ordering::Greater,
+            "[1,2,3,4]"
+                .parse::<PacketData>()
+                .unwrap()
+                .cmp(&"[1,2,3]".parse::<PacketData>().unwrap())
+        );
+
+        assert_eq!(
+            Ordering::Greater,
+            "[2,2,3]"
+                .parse::<PacketData>()
+                .unwrap()
+                .cmp(&"[1,2,3]".parse::<PacketData>().unwrap())
+        );
+
+        assert_eq!(
+            Ordering::Greater,
+            "2".parse::<PacketData>()
+                .unwrap()
+                .cmp(&"[1]".parse::<PacketData>().unwrap())
+        );
     }
 
     #[test]
     fn it_works_with_example_1() {
         assert_eq!(13, part_1_sum_correct_indices(TEST_PACKETS));
+    }
+
+    #[test]
+    fn it_works_with_example_2() {
+        assert_eq!(140, part_2_find_decoder_key(TEST_PACKETS));
     }
 }
